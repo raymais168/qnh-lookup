@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QNH Lookup Calculator</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 16px;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 10px;
+    }
+    .header-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .reset-btn {
+      padding: 5px 10px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #334155;
+      cursor: pointer;
+    }
+    .reset-btn:hover { background: #e2e8f0; color: #0f172a; }
+    .box {
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 12px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .box.result-box {
+      background: #eff6ff;
+      border-color: #93c5fd;
+    }
+    label, .lbl {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #475569;
+    }
+    input[type="text"] {
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+      padding: 9px 10px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      width: 100%;
+      background: #ffffff;
+      color: #0f172a;
+    }
+    input[type="text"]:focus {
+      outline: 2px solid #2563eb;
+      border-color: #2563eb;
+    }
+    .action-btn {
+      padding: 11px 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      background: #0f766e;
+      color: #ffffff;
+      cursor: pointer;
+    }
+    .action-btn:hover { background: #115e59; }
+    .result-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1d4ed8;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+    }
+    .err { color: #b91c1c; font-size: 1rem; }
+  </style>
+
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="description" content="Offline QNH lookup calculator using the supplied pressure lookup table." />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+</head>
+<body>
+  <div class="card">
+    <div class="header-bar">
+      <span class="header-title">QNH Lookup Calculator</span>
+      <button type="button" class="reset-btn" id="resetBtn" title="Clear input and result">Reset</button>
+    </div>
+
+    <div class="box">
+      <label for="stationPressure">Station Level Pressure (hPa)</label>
+      <input
+        type="text"
+        id="stationPressure"
+        inputmode="decimal"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="e.g. 1005.6"
+      />
+    </div>
+
+    <button type="button" class="action-btn" id="lookupBtn">QNH Look up</button>
+
+    <div class="box result-box">
+      <span class="lbl">QNH (hPa)</span>
+      <div class="result-val" id="qnhResult">—</div>
+    </div>
+  </div>
+
+  <script>
+    // Table C values transcribed directly from the supplied Excel workbook.
+    const QNH_TABLE = [{"min":945.3,"max":955.2,"qnh":960},{"min":955.3,"max":956.1,"qnh":961},{"min":956.2,"max":957.1,"qnh":962},{"min":957.2,"max":958.1,"qnh":963},{"min":958.2,"max":959.1,"qnh":964},{"min":959.2,"max":960.1,"qnh":965},{"min":960.2,"max":961.1,"qnh":966},{"min":961.2,"max":962.1,"qnh":967},{"min":962.2,"max":963.1,"qnh":968},{"min":963.2,"max":964.1,"qnh":969},{"min":964.2,"max":965.1,"qnh":970},{"min":965.2,"max":966.1,"qnh":971},{"min":966.2,"max":967.1,"qnh":972},{"min":967.2,"max":968.1,"qnh":973},{"min":968.2,"max":969.1,"qnh":974},{"min":969.2,"max":970.1,"qnh":975},{"min":970.2,"max":971.1,"qnh":976},{"min":971.2,"max":972.1,"qnh":977},{"min":972.2,"max":973.1,"qnh":978},{"min":973.2,"max":974.1,"qnh":979},{"min":974.2,"max":975.1,"qnh":980},{"min":975.2,"max":976.1,"qnh":981},{"min":976.2,"max":977.0,"qnh":982},{"min":977.1,"max":978.0,"qnh":983},{"min":978.1,"max":979.0,"qnh":984},{"min":979.1,"max":980.0,"qnh":985},{"min":980.1,"max":981.0,"qnh":986},{"min":981.1,"max":982.0,"qnh":987},{"min":982.1,"max":983.0,"qnh":988},{"min":983.1,"max":984.0,"qnh":989},{"min":984.1,"max":985.0,"qnh":990},{"min":985.1,"max":986.0,"qnh":991},{"min":986.1,"max":987.0,"qnh":992},{"min":987.1,"max":988.0,"qnh":993},{"min":988.1,"max":989.0,"qnh":994},{"min":989.1,"max":990.0,"qnh":995},{"min":990.1,"max":991.0,"qnh":996},{"min":991.1,"max":992.0,"qnh":997},{"min":992.1,"max":993.0,"qnh":998},{"min":993.1,"max":994.0,"qnh":999},{"min":994.1,"max":995.0,"qnh":1000},{"min":995.1,"max":996.0,"qnh":1001},{"min":996.1,"max":996.9,"qnh":1002},{"min":997.0,"max":997.9,"qnh":1003},{"min":998.0,"max":998.9,"qnh":1004},{"min":999.0,"max":999.9,"qnh":1005},{"min":1000.0,"max":1000.9,"qnh":1006},{"min":1001.0,"max":1001.9,"qnh":1007},{"min":1002.0,"max":1002.9,"qnh":1008},{"min":1003.0,"max":1003.9,"qnh":1009},{"min":1004.0,"max":1004.9,"qnh":1010},{"min":1005.0,"max":1005.9,"qnh":1011},{"min":1006.0,"max":1006.9,"qnh":1012},{"min":1007.0,"max":1007.9,"qnh":1013},{"min":1008.0,"max":1008.9,"qnh":1014},{"min":1009.0,"max":1009.9,"qnh":1015},{"min":1010.0,"max":1010.9,"qnh":1016},{"min":1011.0,"max":1011.9,"qnh":1017},{"min":1012.0,"max":1012.9,"qnh":1018},{"min":1013.0,"max":1013.9,"qnh":1019},{"min":1014.0,"max":1014.9,"qnh":1020},{"min":1015.0,"max":1015.9,"qnh":1021},{"min":1016.0,"max":1016.8,"qnh":1022},{"min":1016.9,"max":1017.8,"qnh":1023},{"min":1017.9,"max":1018.8,"qnh":1024},{"min":1018.9,"max":1019.8,"qnh":1025},{"min":1019.9,"max":1020.8,"qnh":1026},{"min":1020.9,"max":1021.8,"qnh":1027},{"min":1021.9,"max":1022.8,"qnh":1028},{"min":1022.9,"max":1023.8,"qnh":1029},{"min":1023.9,"max":1024.8,"qnh":1030},{"min":1024.9,"max":1025.8,"qnh":1031},{"min":1025.9,"max":1026.8,"qnh":1032},{"min":1026.9,"max":1027.8,"qnh":1033},{"min":1027.9,"max":1028.8,"qnh":1034},{"min":1028.9,"max":1029.8,"qnh":1035},{"min":1029.9,"max":1030.8,"qnh":1036},{"min":1030.9,"max":1031.8,"qnh":1037},{"min":1031.9,"max":1032.8,"qnh":1038},{"min":1032.9,"max":1033.8,"qnh":1039},{"min":1033.9,"max":1034.7,"qnh":1040},{"min":1034.8,"max":1035.7,"qnh":1041},{"min":1035.8,"max":1036.7,"qnh":1042},{"min":1036.8,"max":1037.7,"qnh":1043},{"min":1037.8,"max":1038.7,"qnh":1044},{"min":1038.8,"max":1039.7,"qnh":1045},{"min":1039.8,"max":1040.7,"qnh":1046},{"min":1040.8,"max":1041.7,"qnh":1047},{"min":1041.8,"max":1042.7,"qnh":1048},{"min":1042.8,"max":1043.7,"qnh":1049},{"min":1043.8,"max":1044.7,"qnh":1050},{"min":1044.8,"max":1045.7,"qnh":1051},{"min":1045.8,"max":1046.7,"qnh":1052},{"min":1046.8,"max":1047.7,"qnh":1053},{"min":1047.8,"max":1048.7,"qnh":1054},{"min":1048.8,"max":1049.7,"qnh":1055},{"min":1049.8,"max":1050.7,"qnh":1056},{"min":1050.8,"max":1051.7,"qnh":1057},{"min":1051.8,"max":1052.7,"qnh":1058},{"min":1052.8,"max":1053.7,"qnh":1059}];
+
+    function sanitizeInput() {
+      const input = document.getElementById("stationPressure");
+      const cleaned = input.value.replace(/[^0-9.]/g, "");
+      if (input.value !== cleaned) input.value = cleaned;
+    }
+
+    function lookupQNH() {
+      const input = document.getElementById("stationPressure");
+      const result = document.getElementById("qnhResult");
+
+      sanitizeInput();
+      const rawValue = input.value.trim();
+
+      if (rawValue === "" || rawValue === ".") {
+        result.textContent = "Enter station level pressure";
+        result.className = "result-val err";
+        return;
+      }
+
+      const pressure = Number(rawValue);
+
+      if (!Number.isFinite(pressure)) {
+        result.textContent = "Invalid pressure reading";
+        result.className = "result-val err";
+        return;
+      }
+
+      const match = QNH_TABLE.find(row =>
+        pressure >= row.min - 1e-9 && pressure <= row.max + 1e-9
+      );
+
+      if (!match) {
+        const minPressure = QNH_TABLE[0].min.toFixed(1);
+        const maxPressure = QNH_TABLE[QNH_TABLE.length - 1].max.toFixed(1);
+        result.textContent = `No matching entry (${minPressure}–${maxPressure} hPa)`;
+        result.className = "result-val err";
+        return;
+      }
+
+      result.textContent = `${match.qnh} hPa`;
+      result.className = "result-val";
+    }
+
+    function resetAll() {
+      document.getElementById("stationPressure").value = "";
+      const result = document.getElementById("qnhResult");
+      result.textContent = "—";
+      result.className = "result-val";
+      document.getElementById("stationPressure").focus();
+    }
+
+    const pressureInput = document.getElementById("stationPressure");
+
+    pressureInput.addEventListener("input", sanitizeInput);
+    pressureInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") lookupQNH();
+    });
+
+    document.getElementById("lookupBtn").addEventListener("click", lookupQNH);
+    document.getElementById("resetBtn").addEventListener("click", resetAll);
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js")
+          .catch(error => console.error("Service worker registration failed:", error));
+      });
+    }
+  </script>
+
+</body>
+</html>
